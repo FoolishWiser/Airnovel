@@ -58,11 +58,13 @@ jobs:
             fi
 
             echo "Creating Gitee release $tag ..."
+            # Gitee requires non-empty body
+            local safe_body="${body:-AirNovel $tag 版本发布}"
             PAYLOAD=$(jq -n \
               --arg at "$GITEE_TOKEN" \
               --arg tag "$tag" \
               --arg name "$name" \
-              --arg body "$body" \
+              --arg body "$safe_body" \
               --argjson pre "$prerelease" \
               '{access_token: $at, tag_name: $tag, name: $name, body: $body, prerelease: $pre, target_commitish: "main"}')
 
