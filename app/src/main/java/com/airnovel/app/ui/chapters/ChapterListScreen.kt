@@ -16,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +32,7 @@ import com.airnovel.app.ui.theme.CoverColors
 fun ChapterListScreen(
     bookId: String,
     bookTitle: String = "",
+    bookDescription: String = "",
     onNavigateBack: () -> Unit,
     onChapterClick: (String, Int, String, Int) -> Unit,
     viewModel: ChapterListViewModel = viewModel()
@@ -163,7 +163,7 @@ fun ChapterListScreen(
                     ) {
                         // Book info header
                         item(key = "book_header") {
-                            BookInfoHeader(bookTitle = bookTitle)
+                            BookInfoHeader(bookTitle = bookTitle, bookDescription = bookDescription)
                         }
 
                         itemsIndexed(
@@ -194,7 +194,7 @@ fun ChapterListScreen(
 }
 
 @Composable
-private fun BookInfoHeader(bookTitle: String) {
+private fun BookInfoHeader(bookTitle: String, bookDescription: String = "") {
     val coverIndex = bookTitle.hashCode().mod(CoverColors.size).let { if (it < 0) it + CoverColors.size else it }
 
     Card(
@@ -209,26 +209,19 @@ private fun BookInfoHeader(bookTitle: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
-            // Mini cover
+            // Mini cover (flat color for performance)
             Box(
                 modifier = Modifier
-                    .size(70.dp)
+                    .size(80.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                CoverColors[coverIndex],
-                                CoverColors[(coverIndex + 1) % CoverColors.size]
-                            )
-                        )
-                    ),
+                    .background(CoverColors[coverIndex]),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = bookTitle.firstOrNull()?.toString() ?: "书",
-                    fontSize = 28.sp,
+                    fontSize = 32.sp,
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold,
                     color = Color.White.copy(alpha = 0.9f)
@@ -248,14 +241,19 @@ private fun BookInfoHeader(bookTitle: String) {
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "章节列表",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = FontFamily.Serif
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (bookDescription.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = bookDescription,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Serif,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+                        ),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

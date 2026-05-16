@@ -18,12 +18,13 @@ object Routes {
     const val SETTINGS = "settings"
     const val SETTINGS_FIRST = "settings_first"
     const val BOOKSHELF = "bookshelf"
-    const val CHAPTER_LIST = "chapter_list/{bookId}/{bookTitle}"
+    const val CHAPTER_LIST = "chapter_list/{bookId}/{bookTitle}/{bookDescription}"
     const val READER = "reader/{bookId}/{chapterId}/{bookTitle}/{chapterIndex}"
 
-    fun chapterList(bookId: String, bookTitle: String): String {
+    fun chapterList(bookId: String, bookTitle: String, bookDescription: String = ""): String {
         val encodedTitle = URLEncoder.encode(bookTitle, "UTF-8")
-        return "chapter_list/$bookId/$encodedTitle"
+        val encodedDesc = URLEncoder.encode(bookDescription, "UTF-8")
+        return "chapter_list/$bookId/$encodedTitle/$encodedDesc"
     }
 
     fun reader(
@@ -69,8 +70,8 @@ fun AirNovelNavGraph(
 
         composable(Routes.BOOKSHELF) {
             BookshelfScreen(
-                onBookClick = { bookId, bookTitle ->
-                    navController.navigate(Routes.chapterList(bookId, bookTitle))
+                onBookClick = { bookId, bookTitle, bookDescription ->
+                    navController.navigate(Routes.chapterList(bookId, bookTitle, bookDescription))
                 },
                 onSettingsClick = {
                     navController.navigate(Routes.SETTINGS)
@@ -82,16 +83,21 @@ fun AirNovelNavGraph(
             route = Routes.CHAPTER_LIST,
             arguments = listOf(
                 navArgument("bookId") { type = NavType.StringType },
-                navArgument("bookTitle") { type = NavType.StringType }
+                navArgument("bookTitle") { type = NavType.StringType },
+                navArgument("bookDescription") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val bookId = backStackEntry.arguments?.getString("bookId") ?: ""
             val bookTitle = URLDecoder.decode(
                 backStackEntry.arguments?.getString("bookTitle") ?: "", "UTF-8"
             )
+            val bookDescription = URLDecoder.decode(
+                backStackEntry.arguments?.getString("bookDescription") ?: "", "UTF-8"
+            )
             ChapterListScreen(
                 bookId = bookId,
                 bookTitle = bookTitle,
+                bookDescription = bookDescription,
                 onNavigateBack = { navController.popBackStack() },
                 onChapterClick = { id, chapterId, title, index ->
                     navController.navigate(

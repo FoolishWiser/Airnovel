@@ -27,13 +27,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.airnovel.app.data.model.Book
 import com.airnovel.app.ui.theme.CoverColors
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookshelfScreen(
-    onBookClick: (String, String) -> Unit,
+    onBookClick: (String, String, String) -> Unit,
     onSettingsClick: () -> Unit,
     viewModel: BookshelfViewModel = viewModel()
 ) {
@@ -193,47 +191,42 @@ fun BookshelfScreen(
                 }
 
                 else -> {
-                    SwipeRefresh(
-                        state = rememberSwipeRefreshState(uiState.isRefreshing),
-                        onRefresh = { viewModel.refresh() }
-                    ) {
-                        if (uiState.books.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        Icons.Default.MenuBook,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(56.dp),
-                                        tint = MaterialTheme.colorScheme.outline
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        "书架上还没有书",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                    if (uiState.books.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.MenuBook,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    "书架上还没有书",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 150.dp),
-                                contentPadding = PaddingValues(
-                                    start = 16.dp, end = 16.dp,
-                                    top = 8.dp, bottom = 80.dp
-                                ),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(18.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(uiState.books, key = { it.bookId }) { book ->
-                                    ModernBookCard(
-                                        book = book,
-                                        onClick = { onBookClick(book.bookId, book.title) }
-                                    )
-                                }
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 150.dp),
+                            contentPadding = PaddingValues(
+                                start = 16.dp, end = 16.dp,
+                                top = 8.dp, bottom = 80.dp
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(uiState.books, key = { it.bookId }) { book ->
+                                ModernBookCard(
+                                    book = book,
+                                    onClick = { onBookClick(book.bookId, book.title, book.description) }
+                                )
                             }
                         }
                     }
@@ -257,7 +250,6 @@ fun ModernBookCard(book: Book, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column {
-            // Cover
             val coverIndex = book.bookId.hashCode().mod(CoverColors.size).let { if (it < 0) it + CoverColors.size else it }
             Box(
                 modifier = Modifier
@@ -283,7 +275,6 @@ fun ModernBookCard(book: Book, onClick: () -> Unit) {
                 )
             }
 
-            // Info
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
                     text = book.title,
