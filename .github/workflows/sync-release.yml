@@ -57,11 +57,11 @@ jobs:
 
           # Delete all existing Gitee releases first (to fix order)
           echo "Clearing existing Gitee releases..."
-          for rid in $(curl -sS \
+          for rid in $(curl -fsS --connect-timeout 15 --max-time 120 \
             "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN&per_page=100" \
             | jq -r '.[].id'); do
             [ -z "$rid" ] && continue
-            curl -sS -X DELETE \
+            curl -fsS --connect-timeout 15 --max-time 60 -X DELETE \
               "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$rid?access_token=$GITEE_TOKEN" > /dev/null
             echo "  Deleted release id=$rid"
           done
@@ -81,7 +81,7 @@ jobs:
               --argjson pre "${prerelease:-false}" \
               '{access_token: $at, tag_name: $tag, name: $name, body: $body, prerelease: $pre, target_commitish: "main"}')
 
-            RESP=$(curl -sS -X POST \
+            RESP=$(curl -fsS --connect-timeout 15 --max-time 120 -X POST \
               -H "Content-Type: application/json" \
               -d "$PAYLOAD" \
               "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases")
@@ -97,10 +97,10 @@ jobs:
             local apk="/tmp/airnovel-${tag}.apk"
             if [ -f "$apk" ]; then
               echo "Uploading APK ..."
-              curl -sS -X POST \
+              curl -fsS --connect-timeout 30 --max-time 300 -X POST \
                 -F "file=@$apk" \
                 "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases/$RID/attach_files?access_token=$GITEE_TOKEN" \
-                | jq -r '.name // "Upload done"'
+                | jq -r '.name // "Upload done"' || echo "Upload failed for $tag"
             fi
           }
 
