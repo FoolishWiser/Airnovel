@@ -95,13 +95,22 @@ jobs:
             ASSETS=$(jq -c '[.release.assets[] | {name, url: .browser_download_url}]' "$GITHUB_EVENT_PATH")
             sync_one "$TAG" "$NAME" "$BODY" "$PRE" "$ASSETS"
           else
-            gh release list --limit 100 --json tagName --jq '.[].tagName' | while read -r tag; do
+            # Iterate over all git tags (not just GitHub Releases)
+            for tag in $(git tag --sort=-version:refname); do
               [ -z "$tag" ] && continue
-              DETAILS=$(gh release view "$tag" --json name,body,isPrerelease,assets)
-              n=$(echo "$DETAILS" | jq -r '.name')
-              b=$(echo "$DETAILS" | jq -r '.body')
-              p=$(echo "$DETAILS" | jq -r '.isPrerelease')
-              a=$(echo "$DETAILS" | jq -c '[.assets[] | {name, url: (.url // .downloadUrl)}]')
+              # Try to get GitHub Release details, fallback to tag-only
+              if DETAILS=$(gh release view "$tag" --json name,body,isPrerelease,assets 2>/dev/null); then
+                n=$(echo "$DETAILS" | jq -r '.name')
+                b=$(echo "$DETAILS" | jq -r '.body')
+                p=$(echo "$DETAILS" | jq -r '.isPrerelease')
+                a=$(echo "$DETAILS" | jq -c '[.assets[] | {name, url: (.url // .downloadUrl)}]')
+              else
+                # Fallback: tag name only, no assets
+                n="$tag"
+                b=""
+                p="false"
+                a="[]"
+              fi
               sync_one "$tag" "$n" "$b" "$p" "$a"
             done
           fi
