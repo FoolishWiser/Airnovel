@@ -14,7 +14,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 推送 Tag 到 Gitee（含连接测试）
       - name: Push tags to Gitee
         env:
           GITEE_USER: ${{ secrets.GITEE_USERNAME }}
@@ -43,7 +42,6 @@ jobs:
           fi
           echo "✅ Tag 推送完成"
 
-      # 同步 Release 及附件
       - name: Sync releases and assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,7 +51,7 @@ jobs:
         run: |
           set -e
 
-          # 先获取 Gitee 上已有的 Release，避免重复创建报错
+          # 获取 Gitee 已有 Release，避免重复创建
           EXISTING_RELEASES=$(curl -sS "https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO/releases?access_token=$GITEE_TOKEN&per_page=100")
           declare -A EXISTING_MAP
           while read -r tag id; do
@@ -71,7 +69,6 @@ jobs:
 
             echo "::group::Syncing release for tag: $tag"
 
-            # 如果 Gitee 已存在该 tag 的 Release，则跳过创建（附件也不再上传）
             EXISTING_ID="${EXISTING_MAP[$tag]}"
             if [ -n "$EXISTING_ID" ]; then
               echo "⚠️  Release for tag $tag already exists on Gitee (id: $EXISTING_ID). Skipping."
@@ -79,7 +76,6 @@ jobs:
               return 0
             fi
 
-            # 创建 Release
             PAYLOAD=$(jq -n \
               --arg access_token "$GITEE_TOKEN" \
               --arg tag_name "$tag" \
@@ -101,7 +97,6 @@ jobs:
             fi
             echo "✅ Created Gitee release id: $RELEASE_ID"
 
-            # 上传附件
             if [ "$assets_json" != "[]" ]; then
               echo "📎 正在上传附件..."
               echo "$assets_json" | jq -c '.[]' | while read -r asset; do
@@ -129,13 +124,16 @@ jobs:
             sync_release "$TAG_NAME" "$NAME" "$BODY" "$PRERELEASE" "$ASSETS"
           else
             echo "🔁 正在同步所有 GitHub Release..."
-            RELEASES=$(gh release list --limit 100 --json tagName,name,body,isPrerelease,assets)
-            echo "$RELEASES" | jq -c '.[]' | while read -r release; do
-              tag=$(echo "$release" | jq -r '.tagName')
-              name=$(echo "$release" | jq -r '.name')
-              body=$(echo "$release" | jq -r '.body')
-              prerelease=$(echo "$release" | jq -r '.isPrerelease')
-              assets=$(echo "$release" | jq -c '[.assets[] | {name: .name, url: .downloadUrl}]')
+            TAGS=$(gh release list --limit 100 --json tagName --jq '.[].tagName')
+            while IFS= read -r tag; do
+              if [ -z "$tag" ]; then continue; fi
+              echo "::group::Processing tag: $tag"
+              DETAILS=$(gh release view "$tag" --json name,body,isPrerelease,assets)
+              name=$(echo "$DETAILS" | jq -r '.name')
+              body=$(echo "$DETAILS" | jq -r '.body')
+              prerelease=$(echo "$DETAILS" | jq -r '.isPrerelease')
+              assets=$(echo "$DETAILS" | jq -c '[.assets[] | {name: .name, url: (.url // .downloadUrl)}]')
               sync_release "$tag" "$name" "$body" "$prerelease" "$assets"
-            done
+              echo "::endgroup::"
+            done <<< "$TAGS"
           fi
